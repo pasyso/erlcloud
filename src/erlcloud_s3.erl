@@ -1898,11 +1898,15 @@ s3_request4_no_update(Config, Method, Bucket, Path, Subresource, Params, Body,
             {PathStyleUrl, S3Host}
     end,
 
+    Region = case Config#aws_config.aws_region of
+                 undefined -> aws_region_from_host(S3Host);
+                 Region0 -> Region0
+             end,
     RequestHeaders = erlcloud_aws:sign_v4(
         Method, EscapedPath, Config,
         [{"host", HostName} | FHeaders ],
         Body,
-        aws_region_from_host(S3Host),
+        Region,
         "s3", QueryParams),
 
     RequestURI = lists:flatten([
