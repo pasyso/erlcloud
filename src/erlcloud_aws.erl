@@ -20,7 +20,7 @@
          http_body/1,
          request_to_return/1,
          sign_v4_headers/5,
-         sign_v4/8,
+         sign_v4/8, aws4_token/7,
          get_service_status/1,
          is_throttling_error_response/1,
          get_timeout/1,
@@ -1146,6 +1146,18 @@ sign_v4(Method, Uri, Config, Headers, Payload, Region, Service, QueryParams) ->
     Signature = base16(erlcloud_util:sha256_mac( SigningKey, ToSign)),
     Authorization = authorization(Config, CredentialScope, SignedHeaders, Signature),
     [{"Authorization", lists:flatten(Authorization)} | Headers2].
+
+-spec aws4_token(atom(), list(), aws_config(), erlcloud_httpc:headers(), string(), string(), list()) -> string().
+aws4_token(Method, Uri, Config, Headers, Region, Service, QueryParams) ->
+    Date = proplists:get_value( "x-amz-date", Headers ),
+    PayloadHash = proplists:get_value( "x-amz-content-sha256", Headers ),
+    {Request, SignedHeaders} = canonical_request(Method, Uri, QueryParams, Headers, PayloadHash),
+    CredentialScope = credential_scope(Date, Region, Service),
+    ToSign = to_sign(Date, CredentialScope, Request),
+    SigningKey = signing_key(Config, Date, Region, Service),
+    Signature = base16(erlcloud_util:sha256_mac( SigningKey, ToSign)),
+    Authorization = authorization(Config, CredentialScope, SignedHeaders, Signature),
+    lists:flatten(Authorization).
 
 iso_8601_basic_time() ->
     {{Year,Month,Day},{Hour,Min,Sec}} = calendar:universal_time(),
